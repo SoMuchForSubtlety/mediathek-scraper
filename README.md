@@ -16,9 +16,9 @@ youtube-dl needs to be installed for downloading to work.
       -workers int
             the maximum number of parallel downloads (default 1)
       -maxduration int
-            the maximum duration (in seconds) for a VOD to be considured (default -1)
+            the maximum duration (in seconds) for a VOD to be considured
       -minduration int
-            the minimum duration (in seconds) for a VOD to be considured (default -1)
+            the minimum duration (in seconds) for a VOD to be considured
       -regex string
             regular expression that needs to be matched by the title of a VOD to be considured
 
