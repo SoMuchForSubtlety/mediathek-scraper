@@ -1,6 +1,6 @@
 # mediathek-scraper
 
-Command line utility to search for and download VODs from the ARD mediathek.  
+Command line utility to search for and download from the ARD mediathek.  
 youtube-dl needs to be installed for downloading to work.
 
 ## Flags:  
