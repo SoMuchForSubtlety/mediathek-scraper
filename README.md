@@ -23,7 +23,7 @@ youtube-dl needs to be installed for downloading to work.
             regular expression that needs to be matched by the title of a VOD to be considured
 
 
-### Example usage:
+## Example usage:
     $ mediathek-scraper -search "Tatort" -minduration 1200 -regex "^Tatort:[^-(]*$" -download -path "downloads/" -download -workers 3
     
 search for "Tatort"  
