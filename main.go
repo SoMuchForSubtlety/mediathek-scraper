@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/shurcooL/graphql"
@@ -43,10 +44,11 @@ type result struct {
 func main() {
 	minDuration := flag.Int("minduration", -1, "the minimum duration (in seconds) for a VOD to be considured")
 	maxDuration := flag.Int("maxduration", -1, "the maximum duration (in seconds) for a VOD to be considured")
+	workers := flag.Int("workers", 1, "the maximum number of parallel downloads")
 	searchTerm := flag.String("search", "", "the term to search for")
-	regex := flag.String("regex", "", "regex the title needs to match")
+	regex := flag.String("regex", "", "regular expression that needs to be matched by the title")
 	dlLocation := flag.String("path", "", "the location to save the downloaded files")
-	download := flag.Bool("download", false, "download the VODs")
+	download := flag.Bool("download", false, "download the search results")
 	flag.Parse()
 
 	if *searchTerm == "" {
@@ -59,7 +61,10 @@ func main() {
 		} else if (*dlLocation)[len(*dlLocation)-1] != '/' {
 			*dlLocation += "/"
 		}
+	} else if *workers < 1 {
+		fmt.Println("there needs to be at least one worker")
 	}
+	guard := make(chan bool, *workers)
 
 	client := graphql.NewClient("https://api.ardmediathek.de/public-gateway", nil)
 
@@ -73,8 +78,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	var dlWait sync.WaitGroup
 	for i := 0; i <= (int(numberOfVods.SearchPage.VodTotal) / 24); i++ {
-		fmt.Printf("querying page %v\n", i)
 		var page query
 
 		variables := map[string]interface{}{
@@ -110,19 +115,32 @@ func main() {
 				}
 			}
 			title := string(result.MediumTitle)
-			fmt.Println(result.MediumTitle)
+			r, _ := regexp.Compile("[^/]*$")
+			link := "https://www.ardmediathek.de/ard/player/" + r.FindString(string(result.Links.Target.Href))
+			guard <- true
+			fmt.Printf("Foud: %v\n", title)
+			fmt.Println(link)
 			if *download && checkIfNew(title, lines) {
-				addEntry(title)
-				lines = append(lines, title)
-				r, _ := regexp.Compile("[^/]*$")
-				fmt.Printf("downloading %v\n", result.MediumTitle)
-				err := downloadVOD("https://www.ardmediathek.de/ard/player/"+r.FindString(string(result.Links.Target.Href)), *dlLocation+title)
-				if err != nil {
-					fmt.Println(err)
-				}
+				fmt.Println("starting download")
+				fmt.Println("")
+				go func() {
+					dlWait.Add(1)
+					err := downloadVOD(link, *dlLocation+title)
+					if err != nil {
+						fmt.Println(err)
+					} else {
+						addEntry(title)
+					}
+					<-guard
+					dlWait.Done()
+				}()
+			} else {
+				fmt.Println("")
+				<-guard
 			}
 		}
 	}
+	dlWait.Wait()
 }
 
 func addEntry(input string) error {

@@ -6,6 +6,8 @@ import (
 	"io"
 	"os/exec"
 	"strings"
+
+	"github.com/fatih/color"
 )
 
 func downloadVOD(url string, title string) error {
@@ -25,6 +27,6 @@ func downloadVOD(url string, title string) error {
 func monitorCommand(output io.ReadCloser) {
 	scanner := bufio.NewScanner(output)
 	for scanner.Scan() {
-		fmt.Println(scanner.Text())
+		color.Blue(scanner.Text())
 	}
 }
