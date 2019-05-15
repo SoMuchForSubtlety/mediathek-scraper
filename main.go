@@ -46,12 +46,20 @@ func main() {
 	maxDuration := flag.Int("maxduration", -1, "the maximum duration (in seconds) for a VOD to be considured")
 	searchTerm := flag.String("search", "", "the term to search for")
 	regex := flag.String("regex", "", "regex the title needs to match")
+	dlLocation := flag.String("path", "", "the location to save the downloaded files")
 	download := flag.Bool("download", false, "download the VODs")
 	flag.Parse()
 
 	if *searchTerm == "" {
 		fmt.Println("please provide a search term")
 		return
+	} else if *dlLocation != "" {
+		if _, err := os.Stat(*dlLocation); os.IsNotExist(err) {
+			fmt.Println("specified path does not exist")
+			return
+		} else if (*dlLocation)[len(*dlLocation)-1] != '/' {
+			*dlLocation += "/"
+		}
 	}
 
 	client := graphql.NewClient("https://api.ardmediathek.de/public-gateway", nil)
@@ -111,7 +119,7 @@ func main() {
 				lines = append(lines, properTitle)
 				r, _ := regexp.Compile("[^/]*$")
 				fmt.Printf("downloading %v\n", result.MediumTitle)
-				err := downloadVOD("https://www.ardmediathek.de/ard/player/"+r.FindString(string(result.Links.Target.Href)), properTitle)
+				err := downloadVOD("https://www.ardmediathek.de/ard/player/"+r.FindString(string(result.Links.Target.Href)), *dlLocation+properTitle)
 				if err != nil {
 					fmt.Println(err)
 				}
@@ -143,7 +151,7 @@ func checkIfNew(input string, lines []string) bool {
 }
 
 func readLines(path string) ([]string, error) {
-	file, err := os.Open(path)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
 		return nil, err
 	}

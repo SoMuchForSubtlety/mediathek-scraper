@@ -13,7 +13,7 @@ func downloadVOD(url string, title string) error {
 	title += ".%(ext)s"
 	cmd := exec.Command("youtube-dl", "-o", title, url)
 	stdoutIn, _ := cmd.StdoutPipe()
-	err := cmd.Run()
+	err := cmd.Start()
 	if err != nil {
 		fmt.Println(err)
 		return err
