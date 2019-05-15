@@ -8,7 +8,6 @@ import (
 	"log"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/shurcooL/graphql"
@@ -110,16 +109,14 @@ func main() {
 					continue
 				}
 			}
-			titleRegex, _ := regexp.Compile("^[^(-]*")
-			properTitle := titleRegex.FindString(string(result.MediumTitle))
-			properTitle = strings.TrimSpace(properTitle)
+			title := string(result.MediumTitle)
 			fmt.Println(result.MediumTitle)
-			if *download && checkIfNew(properTitle, lines) {
-				addEntry(properTitle)
-				lines = append(lines, properTitle)
+			if *download && checkIfNew(title, lines) {
+				addEntry(title)
+				lines = append(lines, title)
 				r, _ := regexp.Compile("[^/]*$")
 				fmt.Printf("downloading %v\n", result.MediumTitle)
-				err := downloadVOD("https://www.ardmediathek.de/ard/player/"+r.FindString(string(result.Links.Target.Href)), *dlLocation+properTitle)
+				err := downloadVOD("https://www.ardmediathek.de/ard/player/"+r.FindString(string(result.Links.Target.Href)), *dlLocation+title)
 				if err != nil {
 					fmt.Println(err)
 				}
