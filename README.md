@@ -24,7 +24,7 @@ youtube-dl needs to be installed for downloading to work.
 
 
 ## Example usage:
-    $ mediathek-scraper -search "Tatort" -minduration 1200 -regex "^Tatort:[^-(]*$" -download -path "downloads/" -download -workers 3
+    $ mediathek-scraper -search "Tatort" -minduration 1200 -regex "^Tatort:[^-(]*$" -download -path "downloads/" -workers 3
     
 search for "Tatort"  
 `-search "Tatort"`  
