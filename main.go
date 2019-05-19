@@ -27,7 +27,7 @@ type query struct {
 type resultNumber struct {
 	SearchPage struct {
 		VodTotal graphql.Int
-	} `graphql:"searchPage(client: \"ard\", text: \"tatort\")"`
+	} `graphql:"searchPage(client: \"ard\", text: $searchTerm)"`
 }
 
 type result struct {
@@ -51,8 +51,13 @@ func main() {
 	download := flag.Bool("download", false, "download the search results")
 	flag.Parse()
 
+	var r *regexp.Regexp
+
 	if *searchTerm == "" {
 		fmt.Println("please provide a search term")
+		return
+	} else if *workers < 1 {
+		fmt.Println("there needs to be at least one worker")
 		return
 	} else if *dlLocation != "" {
 		if _, err := os.Stat(*dlLocation); os.IsNotExist(err) {
@@ -61,18 +66,34 @@ func main() {
 		} else if (*dlLocation)[len(*dlLocation)-1] != '/' {
 			*dlLocation += "/"
 		}
-	} else if *workers < 1 {
-		fmt.Println("there needs to be at least one worker")
 	}
+
+	if *regex != "" {
+		// check for regex match
+		var err error
+		r, err = regexp.Compile(*regex)
+		if err != nil {
+			fmt.Println("invalid regex")
+			return
+		}
+	}
+
 	guard := make(chan bool, *workers)
 
 	client := graphql.NewClient("https://api.ardmediathek.de/public-gateway", nil)
 
 	var numberOfVods resultNumber
-	err := client.Query(context.Background(), &numberOfVods, nil)
+
+	variables := map[string]interface{}{
+		"searchTerm": graphql.String(*searchTerm),
+	}
+
+	err := client.Query(context.Background(), &numberOfVods, variables)
 	if err != nil {
 		fmt.Printf("ERROR: %v\n", err)
+		return
 	}
+	fmt.Printf("Found %v results\n\n", int(numberOfVods.SearchPage.VodTotal))
 
 	lines, err := readLines(path)
 	if err != nil {
@@ -93,7 +114,8 @@ func main() {
 			time.Sleep(time.Second * 1)
 			err := client.Query(context.Background(), &page, variables)
 			if err != nil {
-				continue
+				fmt.Printf("ERROR: %v\n", err)
+				return
 			}
 		}
 		for _, result := range page.SearchPage.VodResults {
@@ -103,13 +125,8 @@ func main() {
 			} else if *maxDuration != -1 && int(result.Duration) > *maxDuration {
 				// check for max duration
 				continue
-			} else if *regex != "" {
+			} else if r != nil {
 				// check for regex match
-				r, err := regexp.Compile(*regex)
-				if err != nil {
-					fmt.Println("invalid regex")
-					os.Exit(1)
-				}
 				if !r.MatchString(string(result.MediumTitle)) {
 					continue
 				}
@@ -119,7 +136,7 @@ func main() {
 			link := "https://www.ardmediathek.de/ard/player/" + r.FindString(string(result.Links.Target.Href))
 			guard <- true
 			fmt.Printf("Foud: %v\n", title)
-			fmt.Println(link)
+			fmt.Printf("%v\n\n", link)
 			if *download && checkIfNew(title, lines) {
 				fmt.Println("starting download")
 				fmt.Println("")
@@ -135,7 +152,6 @@ func main() {
 					dlWait.Done()
 				}()
 			} else {
-				fmt.Println("")
 				<-guard
 			}
 		}
